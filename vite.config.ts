@@ -1,4 +1,5 @@
-import { defineConfig, type HtmlTagDescriptor, type Plugin } from 'vite'
+import { createClient } from '@supabase/supabase-js'
+import { defineConfig, loadEnv, type HtmlTagDescriptor, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'node:path'
@@ -19,6 +20,7 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       tailwindcss(),
+      localWishesApi(mode),
       figmaSiteConfiguration(siteConfiguration),
       figmaErrorOverlayReplay(),
       figmaReactRefreshBoundaryFallback(),
@@ -34,6 +36,13 @@ export default defineConfig(({ mode }) => {
       port: parseInt(process.env.PORT || '8443'),
       strictPort: true,
       watch: { ignored: ['**/.figma/**'] },
+      proxy: {
+        '/api': {
+          target: 'https://wishingsamatha-github-io-5f.vercel.app',
+          changeOrigin: true,
+          secure: true,
+        },
+      },
     },
     preview: {
       host: '0.0.0.0',
@@ -41,6 +50,104 @@ export default defineConfig(({ mode }) => {
     },
   }
 })
+
+function localWishesApi(mode: string): Plugin {
+  const env = loadEnv(mode, process.cwd(), '')
+  const supabase = env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY
+    ? createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY)
+    : null
+
+  return {
+    name: 'local-wishes-api',
+    configureServer(server) {
+      server.middlewares.use('/api/wishes-list', async (req, res) => {
+        res.setHeader('Content-Type', 'application/json')
+
+        if (req.method === 'OPTIONS') {
+          res.statusCode = 200
+          res.end()
+          return
+        }
+
+        if (req.method !== 'POST') {
+          res.statusCode = 405
+          res.end(JSON.stringify({ error: 'Method not allowed' }))
+          return
+        }
+
+        if (!supabase) {
+          res.statusCode = 500
+          res.end(JSON.stringify({ error: 'Missing Supabase server environment' }))
+          return
+        }
+
+        let body = ''
+        for await (const chunk of req) body += chunk
+        const { messagePassword } = body ? JSON.parse(body) : {}
+        const fullAccess = Boolean(env.VIEW_MESSAGES_PASSWORD) && messagePassword === env.VIEW_MESSAGES_PASSWORD
+        const { data, error } = await supabase
+          .from('wishes')
+          .select(fullAccess ? '*' : 'id, visitor_name, location, created_at')
+          .order('created_at', { ascending: false })
+
+        if (error) {
+          res.statusCode = 500
+          res.end(JSON.stringify({ error: 'Failed to fetch wishes', details: error.message }))
+          return
+        }
+
+        res.statusCode = 200
+        res.end(JSON.stringify({ wishes: data || [], fullAccess }))
+      })
+
+      server.middlewares.use('/api/wishes', async (req, res) => {
+        res.setHeader('Content-Type', 'application/json')
+
+        if (req.method === 'OPTIONS') {
+          res.statusCode = 200
+          res.end()
+          return
+        }
+
+        if (req.method !== 'POST') {
+          res.statusCode = 405
+          res.end(JSON.stringify({ error: 'Method not allowed' }))
+          return
+        }
+
+        if (!supabase) {
+          res.statusCode = 500
+          res.end(JSON.stringify({ error: 'Missing Supabase server environment' }))
+          return
+        }
+
+        let body = ''
+        for await (const chunk of req) body += chunk
+        const { name, location, message, voiceUrl } = body ? JSON.parse(body) : {}
+        if (!message && !voiceUrl) {
+          res.statusCode = 400
+          res.end(JSON.stringify({ error: 'Either message or voiceUrl is required' }))
+          return
+        }
+
+        const { error } = await supabase.from('wishes').insert({
+          visitor_name: name || 'Anonymous',
+          location: location || null,
+          message: message || null,
+          voice_url: voiceUrl || null,
+        })
+        if (error) {
+          res.statusCode = 500
+          res.end(JSON.stringify({ error: 'Failed to store wish', details: error.message }))
+          return
+        }
+
+        res.statusCode = 200
+        res.end(JSON.stringify({ success: true }))
+      })
+    },
+  }
+}
 
 type FigmaSiteConfiguration = {
   title?: string

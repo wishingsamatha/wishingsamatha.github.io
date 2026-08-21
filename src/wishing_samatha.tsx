@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 
 type Tab = "write" | "voice";
 type MicState = "idle" | "recording" | "processing" | "success";
-type AppScreen = "hero" | "composer" | "success";
+type AppScreen = "hero" | "composer" | "success" | "view";
 type EdgeState =
   | null
   | "empty"
@@ -302,7 +302,7 @@ function AIAssistant({ onDraftReady, onClose }: AIAssistantProps) {
     }, 80);
   };
 
-  const API_BASE = 'https://wishingsamatha-github-io-5f.vercel.app';
+  const API_BASE = import.meta.env.DEV ? "" : (import.meta.env.VITE_API_BASE || "https://wishingsamatha-github-io-5f.vercel.app");
 
   const handleChip = useCallback(
     async (chip: string) => {
@@ -552,6 +552,7 @@ interface ComposerProps {
 function Composer({ onSuccess, setEdge }: ComposerProps) {
   const [tab, setTab] = useState<Tab>("write");
   const [message, setMessage] = useState("");
+  const [location, setLocation] = useState("");
   const [micState, setMicState] = useState<MicState>("idle");
   const [showAI, setShowAI] = useState(false);
   const [sending, setSending] = useState(false);
@@ -560,7 +561,7 @@ function Composer({ onSuccess, setEdge }: ComposerProps) {
   const audioChunks = useRef<Blob[]>([]);
   const MAX = 500;
 
-  const API_BASE = 'https://wishingsamatha-github-io-5f.vercel.app';
+  const API_BASE = import.meta.env.DEV ? "" : (import.meta.env.VITE_API_BASE || "https://wishingsamatha-github-io-5f.vercel.app");
 
   const startRecording = async () => {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -625,6 +626,7 @@ function Composer({ onSuccess, setEdge }: ComposerProps) {
     try {
       const payload = {
         name: 'Anonymous',
+        location: location.trim() || null,
         message: tab === 'write' ? message : null,
         voiceUrl: tab === 'voice' ? audioUrl : null,
       };
@@ -643,7 +645,7 @@ function Composer({ onSuccess, setEdge }: ComposerProps) {
     } finally {
       setSending(false);
     }
-  }, [tab, message, audioUrl, onSuccess, setEdge]);
+  }, [tab, message, location, audioUrl, onSuccess, setEdge]);
 
   const micConfig = {
     idle: { label: "Tap to record", icon: "🎙", ring: false, color: "rgba(255,255,255,0.08)" },
@@ -760,6 +762,19 @@ function Composer({ onSuccess, setEdge }: ComposerProps) {
             </div>
           )}
 
+          <input
+            type="text"
+            value={location}
+            onChange={(event) => setLocation(event.target.value.slice(0, 120))}
+            placeholder="Your location (optional)"
+            className="w-full rounded-xl px-4 py-3 text-sm outline-none mb-5"
+            style={{
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              color: "rgba(255,255,255,0.9)",
+            }}
+          />
+
           {/* Voice tab */}
           {tab === "voice" && (
             <div className="animate-fade-in flex flex-col items-center py-6 gap-5">
@@ -832,7 +847,149 @@ function Composer({ onSuccess, setEdge }: ComposerProps) {
           )}
         </div>
       </div>
+      <button
+        onClick={() => {
+          window.location.hash = "#/view";
+        }}
+        className="fixed bottom-6 right-6 z-50 w-12 h-12 flex items-center justify-center rounded-full transition-all hover:scale-110"
+        style={{
+          background: "rgba(255,255,255,0.06)",
+          border: "1px solid rgba(255,255,255,0.12)",
+          backdropFilter: "blur(12px)",
+          color: "rgba(255,255,255,0.4)",
+          fontSize: "1.2rem",
+        }}
+        title="View wishes"
+        aria-label="View wishes"
+      >
+        🔒
+      </button>
     </section>
+  );
+}
+
+// ── Wishes viewer ────────────────────────────────────────────────────────────
+
+interface Wish {
+  id: string | number;
+  visitor_name: string | null;
+  created_at: string;
+  location?: string | null;
+  message?: string | null;
+  voice_url?: string | null;
+}
+
+function ViewWishes({ onBack }: { onBack: () => void }) {
+  const [messagePassword, setMessagePassword] = useState("");
+  const [wishes, setWishes] = useState<Wish[]>([]);
+  const [fullAccess, setFullAccess] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const API_BASE = import.meta.env.VITE_API_BASE || "";
+
+  const fetchWishes = async (withMessages = false) => {
+    setLoading(true);
+    setError("");
+    try {
+      const response = await fetch(`${API_BASE}/api/wishes-list`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messagePassword: withMessages ? messagePassword : undefined,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setError(data.error || "Unable to load wishes");
+        return;
+      }
+      setWishes(data.wishes || []);
+      setFullAccess(Boolean(data.fullAccess));
+    } catch {
+      setError("Network error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void fetchWishes();
+  }, []);
+
+  return (
+    <div className="min-h-screen flex flex-col items-center px-5 py-10 relative z-10">
+      <div className="w-full max-w-2xl">
+        <button onClick={onBack} className="text-xs text-white/40 mb-6">← Back</button>
+        <h2 className="text-3xl font-light mb-6 gradient-text">Wishes for Samatha</h2>
+
+        {loading && wishes.length === 0 && <p className="text-sm text-white/50">Loading wishes…</p>}
+        {error && <p className="text-xs text-red-400 mb-4">{error}</p>}
+
+        {!loading && wishes.length === 0 && !error && (
+          <div className="glass rounded-2xl p-5">
+            <p className="text-sm text-white/60">No wishes have been sent yet.</p>
+          </div>
+        )}
+
+        {wishes.length > 0 && (
+          <>
+            <div className="space-y-4">
+              {wishes.map((wish) => (
+                <div key={wish.id} className="glass rounded-2xl p-5">
+                  <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                    <span className="text-sm font-medium" style={{ color: "rgba(232,165,152,0.9)" }}>
+                      {wish.visitor_name || "Anonymous"}
+                    </span>
+                    <span className="text-xs text-white/30">
+                      {new Date(wish.created_at).toLocaleString([], {
+                        dateStyle: "medium",
+                        timeStyle: "short",
+                      })}
+                    </span>
+                  </div>
+                  <p className="text-xs text-white/35 mt-2">
+                    📍 {wish.location || "Location not provided"}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            {fullAccess ? (
+              <div className="space-y-4 mt-6">
+                {wishes.map((wish) => (
+                  <div key={`message-${wish.id}`} className="glass rounded-2xl p-5">
+                    <p className="text-sm text-white/80 leading-relaxed">
+                      {wish.message || "Voice note"}
+                    </p>
+                    {wish.voice_url && <audio controls src={wish.voice_url} className="w-full mt-3" />}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="glass rounded-2xl p-5 mt-6">
+                <p className="text-sm text-white/60 mb-3">Enter the admin code to reveal messages.</p>
+                <input
+                  type="password"
+                  value={messagePassword}
+                  onChange={(event) => setMessagePassword(event.target.value)}
+                  placeholder="Admin message password"
+                  className="w-full rounded-xl px-4 py-3 text-sm outline-none mb-3"
+                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "white" }}
+                />
+                <button
+                  onClick={() => void fetchWishes(true)}
+                  disabled={loading}
+                  className="btn-primary w-full py-3 rounded-xl text-sm"
+                >
+                  {loading ? "Unlocking…" : "Reveal messages"}
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -1067,9 +1224,29 @@ export default function WishingSamatha() {
   const [screen, setScreen] = useState<AppScreen>("hero");
   const [edge, setEdge] = useState<EdgeState>(null);
 
+  useEffect(() => {
+    const checkHash = () => {
+      if (window.location.hash === "#/view") {
+        setScreen("view");
+      }
+    };
+    window.addEventListener("hashchange", checkHash);
+    checkHash();
+    return () => window.removeEventListener("hashchange", checkHash);
+  }, []);
+
   const scrollToComposer = () => {
     document.getElementById("composer")?.scrollIntoView({ behavior: "smooth" });
   };
+
+  if (screen === "view") {
+    return (
+      <div style={{ background: "transparent", minHeight: "100vh" }}>
+        <ViewWishes onBack={() => { setScreen("hero"); window.location.hash = ""; }} />
+        <EdgeModal state={edge} onClose={() => setEdge(null)} />
+      </div>
+    );
+  }
 
   if (screen === "success") {
     return (

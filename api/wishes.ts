@@ -24,7 +24,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const { name, message, voiceUrl } = req.body;
+    const { name, location, message, voiceUrl } = req.body;
 
     if (!message && !voiceUrl) {
         return res.status(400).json({ error: 'Either message or voiceUrl is required' });
@@ -32,11 +32,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     try {
         // 1. Store in Supabase
-        await supabase.from('wishes').insert({
+        const { error: insertError } = await supabase.from('wishes').insert({
             visitor_name: name || 'Anonymous',
+            location: location || null,
             message: message || null,
             voice_url: voiceUrl || null,
         });
+        if (insertError) throw insertError;
 
         // 2. Email with attachment
         const emailText = message
