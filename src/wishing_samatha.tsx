@@ -288,25 +288,43 @@ function AIAssistant({ onDraftReady, onClose }: AIAssistantProps) {
     }, 80);
   };
 
+  const API_BASE = 'https://wishingsamatha-github-io-5f.vercel.app';
+
   const handleChip = useCallback(
-    (chip: string) => {
+    async (chip: string) => {
       const newAnswers = { ...answers, [currentStep.key]: chip };
       setAnswers(newAnswers);
       setThinking(true);
       scrollBottom();
-      setTimeout(() => {
-        setThinking(false);
-        const generated = TONE_DRAFTS[chip] || TONE_DRAFTS["Warm & heartfelt"];
-        setDraft(generated);
-        setEditedDraft(generated);
+      try {
+        const res = await fetch(`${API_BASE}/api/ai-compose`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: newAnswers.name,
+            relation: newAnswers.relation,
+            memory: newAnswers.memory,
+            tone: chip,
+          }),
+        });
+        const data = await res.json();
+        setDraft(data.generatedMessage);
+        setEditedDraft(data.generatedMessage);
         setDone(true);
+      } catch {
+        const fallback = TONE_DRAFTS[chip] || TONE_DRAFTS["Warm & heartfelt"];
+        setDraft(fallback);
+        setEditedDraft(fallback);
+        setDone(true);
+      } finally {
+        setThinking(false);
         scrollBottom();
-      }, 1800);
+      }
     },
     [answers, currentStep]
   );
 
-  const handleSubmit = useCallback(() => {
+  const handleSubmit = useCallback(async () => {
     if (!input.trim()) return;
     const newAnswers = { ...answers, [currentStep.key]: input.trim() };
     setAnswers(newAnswers);
@@ -317,13 +335,29 @@ function AIAssistant({ onDraftReady, onClose }: AIAssistantProps) {
     } else {
       setThinking(true);
       scrollBottom();
-      setTimeout(() => {
-        setThinking(false);
+      try {
+        const res = await fetch(`${API_BASE}/api/ai-compose`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: newAnswers.name,
+            relation: newAnswers.relation,
+            memory: newAnswers.memory,
+            tone: 'Warm & heartfelt',
+          }),
+        });
+        const data = await res.json();
+        setDraft(data.generatedMessage);
+        setEditedDraft(data.generatedMessage);
+        setDone(true);
+      } catch {
         setDraft(TONE_DRAFTS["Warm & heartfelt"]);
         setEditedDraft(TONE_DRAFTS["Warm & heartfelt"]);
         setDone(true);
+      } finally {
+        setThinking(false);
         scrollBottom();
-      }, 2000);
+      }
     }
   }, [input, answers, currentStep, step]);
 
@@ -505,41 +539,95 @@ function Composer({ onSuccess, setEdge }: ComposerProps) {
   const [micState, setMicState] = useState<MicState>("idle");
   const [showAI, setShowAI] = useState(false);
   const [sending, setSending] = useState(false);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const mediaRecorder = useRef<MediaRecorder | null>(null);
+  const audioChunks = useRef<Blob[]>([]);
   const MAX = 500;
 
-  const handleSend = useCallback(() => {
+  const API_BASE = 'https://wishingsamatha-github-io-5f.vercel.app';
+
+  const startRecording = async () => {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder.current = new MediaRecorder(stream);
+    audioChunks.current = [];
+
+    mediaRecorder.current.ondataavailable = (e) => audioChunks.current.push(e.data);
+    mediaRecorder.current.onstop = async () => {
+      const audioBlob = new Blob(audioChunks.current, { type: 'audio/webm' });
+      const reader = new FileReader();
+      reader.readAsDataURL(audioBlob);
+      reader.onloadend = async () => {
+        const base64 = (reader.result as string).split(',')[1];
+        setMicState('processing');
+        try {
+          const res = await fetch(`${API_BASE}/api/voice-upload`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ audioBase64: base64 }),
+          });
+          const data = await res.json();
+          setAudioUrl(data.audioUrl);
+          setMicState('success');
+        } catch {
+          setEdge('network-error');
+          setMicState('idle');
+        }
+      };
+    };
+
+    mediaRecorder.current.start();
+    setMicState('recording');
+  };
+
+  const stopRecording = () => {
+    mediaRecorder.current?.stop();
+  };
+
+  const handleMic = useCallback(() => {
+    if (micState === "idle") {
+      navigator.mediaDevices
+        .getUserMedia({ audio: true })
+        .then(() => {
+          startRecording();
+        })
+        .catch(() => setEdge('mic-denied'));
+    } else if (micState === "recording") {
+      stopRecording();
+    }
+  }, [micState, setEdge]);
+
+  const handleSend = useCallback(async () => {
     if (tab === "write" && !message.trim()) {
       setEdge("empty");
       return;
     }
-    setSending(true);
-    setTimeout(() => {
-      setSending(false);
-      // Randomly show edge state demo or success
-      onSuccess();
-    }, 1400);
-  }, [tab, message, onSuccess, setEdge]);
-
-  const handleMic = useCallback(() => {
-    if (micState === "idle") {
-      // Try to access mic
-      navigator.mediaDevices
-        ?.getUserMedia({ audio: true })
-        .then(() => {
-          setMicState("recording");
-          setTimeout(() => {
-            setMicState("processing");
-            setTimeout(() => setMicState("success"), 1200);
-          }, 3000);
-        })
-        .catch(() => {
-          setEdge("mic-denied");
-        });
-    } else if (micState === "recording") {
-      setMicState("processing");
-      setTimeout(() => setMicState("success"), 1200);
+    if (tab === "voice" && !audioUrl) {
+      setEdge("empty");
+      return;
     }
-  }, [micState, setEdge]);
+    setSending(true);
+    try {
+      const payload = {
+        name: 'Anonymous',
+        message: tab === 'write' ? message : null,
+        voiceUrl: tab === 'voice' ? audioUrl : null,
+      };
+      const res = await fetch(`${API_BASE}/api/wishes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        onSuccess();
+      } else {
+        setEdge('network-error');
+      }
+    } catch {
+      setEdge('network-error');
+    } finally {
+      setSending(false);
+    }
+  }, [tab, message, audioUrl, onSuccess, setEdge]);
 
   const micConfig = {
     idle: { label: "Tap to record", icon: "🎙", ring: false, color: "rgba(255,255,255,0.08)" },
@@ -851,7 +939,13 @@ function EdgeDemoStrip({ onShow }: { onShow: (e: EdgeState) => void }) {
 function HeroSection({ onCTA }: { onCTA: () => void }) {
   const [slideCurrent, setSlideCurrent] = useState(0);
 
-
+  // Auto-rotate with crossfade every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setSlideCurrent((c) => (c + 1) % SLIDES.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   const nextSlide = () => setSlideCurrent((c) => (c + 1) % SLIDES.length);
   const prevSlide = () => setSlideCurrent((c) => (c - 1 + SLIDES.length) % SLIDES.length);
@@ -859,24 +953,18 @@ function HeroSection({ onCTA }: { onCTA: () => void }) {
   return (
     <section className="relative min-h-screen flex flex-col items-center justify-center text-center px-5 overflow-hidden">
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-4xl h-[60vh] max-h-[500px] z-0 overflow-hidden rounded-[2.5rem]" style={{ boxShadow: "0 0 80px rgba(232,165,152,0.1)" }}>
-        {SLIDES.map((slide, i) => {
-          let offset = i - slideCurrent;
-          return (
-            <div
-              key={slide.id}
-              className="absolute inset-0 transition-transform duration-[1500ms] ease-in-out pointer-events-none"
-              style={{
-                transform: `translateX(${offset * 100}%)`,
-              }}
-            >
-              <img
-                src={slide.src}
-                alt={slide.alt}
-                className={`w-full h-full object-cover ${slide.kb}`}
-              />
-            </div>
-          );
-        })}
+        {SLIDES.map((slide, i) => (
+          <div
+            key={slide.id}
+            className="absolute inset-0 transition-opacity duration-[1800ms] ease-in-out"
+            style={{
+              opacity: i === slideCurrent ? 1 : 0,
+              zIndex: i === slideCurrent ? 2 : 1,
+            }}
+          >
+            <img src={slide.src} alt={slide.alt} className={`w-full h-full object-cover ${slide.kb}`} />
+          </div>
+        ))}
         <div
           className="absolute inset-0 z-10 pointer-events-none"
           style={{ background: "linear-gradient(to bottom, rgba(10,10,10,0.4) 0%, rgba(10,10,10,0.7) 100%)" }}
