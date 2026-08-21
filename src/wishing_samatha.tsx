@@ -62,6 +62,84 @@ const AI_STEPS = [
   },
 ];
 
+const ENGLISH_BANNED_WORDS = [
+  "fuck",
+  "lanza",
+  "pooku",
+  "gudda",
+  "Denggutha",
+  "munda",
+  "balisindda",
+  "gudda balisindda",
+  "shit",
+  "bitch",
+  "asshole",
+  "bastard",
+  "damn",
+  "cunt",
+  "dick",
+  "piss",
+  "slut",
+  "whore",
+  "motherfucker",
+  "fucker",
+  "douchebag",
+  "wanker",
+  "twat",
+  "prick",
+  "dickhead",
+  "ass",
+  "arse",
+  "bugger",
+  "bollocks",
+  "wank",
+  "tosser",
+];
+
+const TELUGU_BANNED_WORDS = [
+  "లంజ",
+  "లంజోడుకా",
+  "గుడ్డ",
+  "గుడ్డ బలిసిన",
+  "దెంగై",
+  "దెంగుతా",
+  "మొడ్డ",
+  "పూకు",
+  "పూక",
+  "సుల్లి",
+  "సుల్లి గుడ్డ",
+  "బొంద",
+  "బలిసిన",
+  "నా మొడ్డ",
+  "నీ మొడ్డ",
+  "అమ్మ",
+  "నీ అమ్మ",
+  "చెత్త",
+  "చెత్త నా కొడకా",
+  "వెధవ",
+  "వెధవా",
+  "పిచ్చోడా",
+  "ఎర్రి పూకా",
+  "ఎర్రి పూక",
+  "దెంగు",
+  "దెంగుతున్నా",
+  "గాడిద",
+  "గాడిద కొడకా",
+  "కుక్క",
+  "కుక్క కొడకా",
+  "పంది",
+  "పంది కొడకా",
+  "లంజ కొడకా",
+];
+
+function containsInappropriate(text: string): boolean {
+  const lower = text.toLowerCase();
+  const hasEnglish = ENGLISH_BANNED_WORDS.some((word) => new RegExp(`\\b${word}\\b`, "i").test(lower));
+  const hasTelugu = TELUGU_BANNED_WORDS.some((word) => lower.includes(word.toLowerCase()));
+
+  return hasEnglish || hasTelugu;
+}
+
 const TONE_DRAFTS: Record<string, string> = {
   "Warm & heartfelt":
     "Samatha, knowing you has been one of the quiet gifts I never expected. You have this rare way of making the people around you feel truly seen. On this birthday, I hope the warmth you pour into the world comes rushing back to you tenfold. Happy birthday — you deserve every beautiful thing.",
@@ -614,11 +692,16 @@ function Composer({ onSuccess, setEdge }: ComposerProps) {
   }, [micState, setEdge]);
 
   const handleSend = useCallback(async () => {
-    if (tab === "write" && !message.trim()) {
-      setEdge("empty");
-      return;
-    }
-    if (tab === "voice" && !audioUrl) {
+    if (tab === "write") {
+      if (!message.trim()) {
+        setEdge("empty");
+        return;
+      }
+      if (containsInappropriate(message)) {
+        setEdge("inappropriate");
+        return;
+      }
+    } else if (!audioUrl) {
       setEdge("empty");
       return;
     }
@@ -847,23 +930,25 @@ function Composer({ onSuccess, setEdge }: ComposerProps) {
           )}
         </div>
       </div>
-      <button
-        onClick={() => {
-          window.location.hash = "#/view";
-        }}
+      <a
+        href="#/view"
+        type="button"
+        aria-label="View wishes"
         className="fixed bottom-6 right-6 z-50 w-12 h-12 flex items-center justify-center rounded-full transition-all hover:scale-110"
         style={{
           background: "rgba(255,255,255,0.06)",
           border: "1px solid rgba(255,255,255,0.12)",
           backdropFilter: "blur(12px)",
-          color: "rgba(255,255,255,0.4)",
-          fontSize: "1.2rem",
+          color: "rgba(255,255,255,0.5)",
+          fontSize: "1.3rem",
+          cursor: "pointer",
+          textDecoration: "none",
+          lineHeight: 1,
         }}
         title="View wishes"
-        aria-label="View wishes"
       >
-        🔒
-      </button>
+        💬
+      </a>
     </section>
   );
 }
