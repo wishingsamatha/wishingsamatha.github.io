@@ -73,6 +73,20 @@ const TONE_DRAFTS: Record<string, string> = {
     "Happy birthday to someone who somehow gets better-looking AND funnier every year. Truly unfair for the rest of us. May your cake be huge, your candles few, and your selfies always fire. You absolute legend.",
 };
 
+function getGeneratedMessage(data: unknown): string {
+  if (
+    typeof data === "object" &&
+    data !== null &&
+    "generatedMessage" in data &&
+    typeof data.generatedMessage === "string" &&
+    data.generatedMessage.trim()
+  ) {
+    return data.generatedMessage;
+  }
+
+  throw new Error("AI response did not include a message");
+}
+
 // ── Confetti pieces ───────────────────────────────────────────────────────────
 
 const CONFETTI_PIECES = Array.from({ length: 18 }, (_, i) => ({
@@ -308,8 +322,9 @@ function AIAssistant({ onDraftReady, onClose }: AIAssistantProps) {
           }),
         });
         const data = await res.json();
-        setDraft(data.generatedMessage);
-        setEditedDraft(data.generatedMessage);
+        const generatedMessage = getGeneratedMessage(data);
+        setDraft(generatedMessage);
+        setEditedDraft(generatedMessage);
         setDone(true);
       } catch {
         const fallback = TONE_DRAFTS[chip] || TONE_DRAFTS["Warm & heartfelt"];
@@ -347,8 +362,9 @@ function AIAssistant({ onDraftReady, onClose }: AIAssistantProps) {
           }),
         });
         const data = await res.json();
-        setDraft(data.generatedMessage);
-        setEditedDraft(data.generatedMessage);
+        const generatedMessage = getGeneratedMessage(data);
+        setDraft(generatedMessage);
+        setEditedDraft(generatedMessage);
         setDone(true);
       } catch {
         setDraft(TONE_DRAFTS["Warm & heartfelt"]);
