@@ -1,4 +1,4 @@
-
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 
@@ -8,7 +8,7 @@ const supabase = createClient(
 );
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-export default async function handler(req: any, res: any) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
     // CORS headers
     res.setHeader('Access-Control-Allow-Origin', process.env.ALLOWED_ORIGIN || '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -38,27 +38,83 @@ export default async function handler(req: any, res: any) {
             voice_url: voiceUrl || null,
         });
 
-        // 2. Send email
-        await resend.emails.send({
+        // 2. Email with attachment
+        const emailText = message
+            ? message
+            : 'A voice message was sent for you! (see attachment)';
+        const subject = `New birthday wish from ${name || 'Anonymous'}`;
+
+        const emailOptions: any = {
             from: 'Birthday Wishes <onboarding@resend.dev>',
             to: process.env.FRIEND_EMAIL!,
-            subject: `New birthday wish from ${name || 'Anonymous'}`,
-            text: message || 'A voice message was sent for you!',
-        });
+            subject,
+            text: emailText,
+        };
 
-        // 3. Send Telegram message
-        await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                chat_id: process.env.TELEGRAM_CHAT_ID,
-                text: `New birthday wish from ${name || 'Anonymous'}:\n\n${message || 'Voice message attached.'}`,
-            }),
-        });
+        if (voiceUrl) {
+            const audioResponse = await fetch(voiceUrl);
+            if (audioResponse.ok) {
+                const arrayBuffer = await audioResponse.arrayBuffer();
+                const audioBuffer = Buffer.from(arrayBuffer);
+                emailOptions.attachments = [
+                    {
+                        filename: `voice-message-${Date.now()}.webm`,
+                        content: audioBuffer,
+                    },
+                ];
+            }
+        }
+
+        await resend.emails.send(emailOptions);
+
+        // 3. Telegram delivery with fallback
+        const telegramBase = `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`;
+        const caption = `New voice wish from ${name || 'Anonymous'}${message ? ': ' + message : ''}`;
+
+        if (voiceUrl) {
+            // Try sendAudio first
+            const sendAudioRes = await fetch(`${telegramBase}/sendAudio`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chat_id: process.env.TELEGRAM_CHAT_ID,
+                    audio: voiceUrl,
+                    caption,
+                }),
+            });
+
+            const audioData = await sendAudioRes.json();
+
+            // If sendAudio fails, fallback to sendDocument
+            if (!audioData.ok) {
+                await fetch(`${telegramBase}/sendDocument`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chat_id: process.env.TELEGRAM_CHAT_ID,
+                        document: voiceUrl,
+                        caption,
+                    }),
+                });
+            }
+        } else {
+            // Text only
+            await fetch(`${telegramBase}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chat_id: process.env.TELEGRAM_CHAT_ID,
+                    text: `New birthday wish from ${name || 'Anonymous'}:\n\n${message}`,
+                }),
+            });
+        }
 
         res.status(200).json({ success: true });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ error: 'Failed to deliver wish' });
+        res.status(500).json({
+            error: 'Failed to deliver wish',
+            details: error instanceof Error ? error.message : String(error),
+        });
     }
 }
