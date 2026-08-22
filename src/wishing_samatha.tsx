@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { Balloons } from "@/components/ui/balloons";
+import { Button } from "@/components/ui/button";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -337,7 +339,7 @@ function EdgeModal({ state, onClose, onRetry }: EdgeModalProps) {
           {c.cta && (
             <button
               onClick={c.ctaAction || onClose}
-              className="btn-primary flex-1 py-3 rounded-xl text-sm"
+              className="btn-primary rainbow-border flex-1 py-3 rounded-xl text-sm"
             >
               {c.cta}
             </button>
@@ -560,7 +562,7 @@ function AIAssistant({ onDraftReady, onClose }: AIAssistantProps) {
             />
             <button
               onClick={() => onDraftReady(editedDraft)}
-              className="btn-primary w-full py-2.5 rounded-xl text-sm mt-2"
+              className="btn-primary rainbow-border w-full py-2.5 rounded-xl text-sm mt-2"
             >
               Use this message
             </button>
@@ -913,7 +915,7 @@ function Composer({ onSuccess, setEdge }: ComposerProps) {
             <button
               onClick={handleSend}
               disabled={sending}
-              className="btn-primary w-full py-3.5 rounded-2xl text-sm flex items-center justify-center gap-2 mt-2"
+              className="btn-primary rainbow-border w-full py-3.5 rounded-2xl text-sm flex items-center justify-center gap-2 mt-2"
               style={{ opacity: sending ? 0.7 : 1 }}
             >
               {sending ? (
@@ -1065,7 +1067,7 @@ function ViewWishes({ onBack }: { onBack: () => void }) {
                 <button
                   onClick={() => void fetchWishes(true)}
                   disabled={loading}
-                  className="btn-primary w-full py-3 rounded-xl text-sm"
+                  className="btn-primary rainbow-border w-full py-3 rounded-xl text-sm"
                 >
                   {loading ? "Unlocking…" : "Reveal messages"}
                 </button>
@@ -1123,11 +1125,11 @@ function SuccessScreen({ onBack }: { onBack: () => void }) {
       </p>
       <button
         onClick={onBack}
-        className="text-xs px-5 py-2.5 rounded-xl transition-all"
+        className="text-xs px-5 py-2.5 rounded-xl transition-all rainbow-border"
         style={{
           background: "rgba(255,255,255,0.05)",
-          border: "1px solid rgba(255,255,255,0.08)",
-          color: "rgba(255,255,255,0.45)",
+          border: "none",
+          color: "rgba(255,255,255,0.9)",
         }}
       >
         Send another wish
@@ -1196,6 +1198,7 @@ function EdgeDemoStrip({ onShow }: { onShow: (e: EdgeState) => void }) {
 
 function HeroSection({ onCTA }: { onCTA: () => void }) {
   const [slideCurrent, setSlideCurrent] = useState(0);
+  const balloonsRef = useRef<{ launchAnimation: () => void } | null>(null);
 
   // Auto-rotate with crossfade every 5 seconds
   useEffect(() => {
@@ -1244,6 +1247,7 @@ function HeroSection({ onCTA }: { onCTA: () => void }) {
           →
         </button>
       </div>
+      <Balloons ref={balloonsRef} type="default" />
 
       <div className="relative z-20 flex flex-col items-center gap-6">
         {/* Eyebrow */}
@@ -1277,12 +1281,29 @@ function HeroSection({ onCTA }: { onCTA: () => void }) {
 
         {/* CTA */}
         <div className="animate-fade-in-up delay-500 flex flex-col items-center gap-3">
-          <button
+          <Button
+            onClick={() => balloonsRef.current?.launchAnimation()}
+            className="relative overflow-hidden rounded-2xl px-8 py-4 text-sm tracking-wide font-medium rainbow-border"
+            style={{
+              background: "linear-gradient(135deg, #E8A598, #C9748F 60%, #D4A574)",
+              color: "#0a0a0a",
+              boxShadow: "0 0 30px rgba(232,165,152,0.4), 0 0 60px rgba(201,116,143,0.3), inset 0 1px 0 rgba(255,255,255,0.3)",
+            }}
+          >
+            <span className="relative z-10">Launch Balloons! 🎈</span>
+            <span
+              className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite]"
+              style={{
+                background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)",
+              }}
+            />
+          </Button>
+          <Button
             onClick={onCTA}
-            className="btn-primary px-8 py-4 rounded-2xl text-sm tracking-wide"
+            className="btn-primary rainbow-border px-8 py-4 rounded-2xl text-sm tracking-wide"
           >
             Leave a wish
-          </button>
+          </Button>
           <a
             href="#composer"
             className="text-xs"

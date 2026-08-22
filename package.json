@@ -10,11 +10,16 @@
     "format": "oxfmt"
   },
   "dependencies": {
+    "@radix-ui/react-slot": "^1.3.3",
     "@supabase/supabase-js": "^2.112.3",
+    "balloons-js": "^0.0.3",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "openai": "^7.5.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "resend": "^6.21.0"
+    "resend": "^6.21.0",
+    "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.0",
