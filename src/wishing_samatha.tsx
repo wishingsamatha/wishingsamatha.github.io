@@ -1336,7 +1336,7 @@ function HeroSection({ onCTA }: { onCTA: () => void }) {
           className="animate-fade-in-up delay-300 text-base md:text-lg font-light max-w-xs"
           style={{ color: "rgba(255,255,255,0.5)", lineHeight: 1.6 }}
         >
-          A small gift, from the people who love you — just for today.
+          A small gift, from the people who will always remember you.
         </p>
 
         {/* CTA */}
