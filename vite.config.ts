@@ -25,6 +25,19 @@ export default defineConfig(({ mode }) => {
       figmaErrorOverlayReplay(),
       figmaReactRefreshBoundaryFallback(),
       figmaMakeKitPlugin({ storiesGlob: '/src/**/*.stories.{ts,tsx,js,jsx}' }),
+      {
+        name: 'cors-proxy',
+        configureServer(server) {
+          server.middlewares.use(async (req, res, next) => {
+            if (req.url?.startsWith('/api/wishes') && req.method === 'POST') {
+              res.setHeader('Access-Control-Allow-Origin', 'https://wishing-samatha.vercel.app');
+              res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+              res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+            }
+            next();
+          });
+        },
+      },
     ],
     resolve: {
       alias: {
@@ -100,51 +113,6 @@ function localWishesApi(mode: string): Plugin {
         res.end(JSON.stringify({ wishes: data || [], fullAccess }))
       })
 
-      server.middlewares.use('/api/wishes', async (req, res) => {
-        res.setHeader('Content-Type', 'application/json')
-
-        if (req.method === 'OPTIONS') {
-          res.statusCode = 200
-          res.end()
-          return
-        }
-
-        if (req.method !== 'POST') {
-          res.statusCode = 405
-          res.end(JSON.stringify({ error: 'Method not allowed' }))
-          return
-        }
-
-        if (!supabase) {
-          res.statusCode = 500
-          res.end(JSON.stringify({ error: 'Missing Supabase server environment' }))
-          return
-        }
-
-        let body = ''
-        for await (const chunk of req) body += chunk
-        const { name, location, message, voiceUrl } = body ? JSON.parse(body) : {}
-        if (!message && !voiceUrl) {
-          res.statusCode = 400
-          res.end(JSON.stringify({ error: 'Either message or voiceUrl is required' }))
-          return
-        }
-
-        const { error } = await supabase.from('wishes').insert({
-          visitor_name: name || 'Anonymous',
-          location: location || null,
-          message: message || null,
-          voice_url: voiceUrl || null,
-        })
-        if (error) {
-          res.statusCode = 500
-          res.end(JSON.stringify({ error: 'Failed to store wish', details: error.message }))
-          return
-        }
-
-        res.statusCode = 200
-        res.end(JSON.stringify({ success: true }))
-      })
     },
   }
 }

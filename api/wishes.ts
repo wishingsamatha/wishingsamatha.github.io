@@ -26,14 +26,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const { name, location, message, voiceUrl } = req.body;
 
-    if (!message && !voiceUrl) {
-        return res.status(400).json({ error: 'Either message or voiceUrl is required' });
-    }
+// Mandatory name check
+  if (!name || !name.trim()) {
+    return res.status(400).json({ error: 'Name is required' });
+  }
+
+  if (!message && !voiceUrl) {
+    return res.status(400).json({ error: 'Either message or voiceUrl is required' });
+  }
 
     try {
         // 1. Store in Supabase
         const { error: insertError } = await supabase.from('wishes').insert({
-            visitor_name: name || 'Anonymous',
+            visitor_name: name.trim(),
             location: location || null,
             message: message || null,
             voice_url: voiceUrl || null,
@@ -44,7 +49,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const emailText = message
             ? message
             : 'A voice message was sent for you! (see attachment)';
-        const subject = `New birthday wish from ${name || 'Anonymous'}`;
+        const subject = `New birthday wish from ${name.trim()}`;
 
         const emailOptions: any = {
             from: 'Birthday Wishes <onboarding@resend.dev>',
@@ -71,7 +76,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         // 3. Telegram delivery with fallback
         const telegramBase = `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`;
-        const caption = `New voice wish from ${name || 'Anonymous'}${message ? ': ' + message : ''}`;
+        const caption = `New voice wish from ${name.trim()}${message ? ': ' + message : ''}`;
 
         if (voiceUrl) {
             // Try sendAudio first
@@ -106,7 +111,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     chat_id: process.env.TELEGRAM_CHAT_ID,
-                    text: `New birthday wish from ${name || 'Anonymous'}:\n\n${message}`,
+                    text: `New birthday wish from ${name.trim()}:\n\n${message}`,
                 }),
             });
         }

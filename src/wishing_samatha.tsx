@@ -634,6 +634,8 @@ function Composer({ onSuccess, setEdge }: ComposerProps) {
   const [tab, setTab] = useState<Tab>("write");
   const [message, setMessage] = useState("");
   const [location, setLocation] = useState("");
+  const [visitorName, setVisitorName] = useState("");
+  const [nameError, setNameError] = useState("");
   const [micState, setMicState] = useState<MicState>("idle");
   const [showAI, setShowAI] = useState(false);
   const [sending, setSending] = useState(false);
@@ -694,44 +696,53 @@ function Composer({ onSuccess, setEdge }: ComposerProps) {
     }
   }, [micState, setEdge]);
 
-  const handleSend = useCallback(async () => {
-    if (tab === "write") {
-      if (!message.trim()) {
-        setEdge("empty");
-        return;
-      }
-      if (containsInappropriate(message)) {
-        setEdge("inappropriate");
-        return;
-      }
-    } else if (!audioUrl) {
+const handleSend = useCallback(async () => {
+  // Name is mandatory
+  if (!visitorName.trim()) {
+    setNameError("Name is required");
+    return;
+  }
+
+
+  if (tab === "write") {
+    if (!message.trim()) {
       setEdge("empty");
       return;
     }
-    setSending(true);
-    try {
-      const payload = {
-        name: 'Anonymous',
-        location: location.trim() || null,
-        message: tab === 'write' ? message : null,
-        voiceUrl: tab === 'voice' ? audioUrl : null,
-      };
-      const res = await fetch(`${API_BASE}/api/wishes`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (res.ok) {
-        onSuccess();
-      } else {
-        setEdge('network-error');
-      }
-    } catch {
-      setEdge('network-error');
-    } finally {
-      setSending(false);
+    if (containsInappropriate(message)) {
+      setEdge("inappropriate");
+      return;
     }
-  }, [tab, message, location, audioUrl, onSuccess, setEdge]);
+  } else if (tab === "voice" && !audioUrl) {
+    setEdge("empty");
+    return;
+  }
+
+  setSending(true);
+  try {
+    const payload = {
+      name: visitorName.trim(),
+      location: location.trim() || null,
+      message: tab === 'write' ? message : null,
+      voiceUrl: tab === 'voice' ? audioUrl : null,
+    };
+    const res = await fetch(`${API_BASE}/api/wishes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) {
+      onSuccess();
+    } else {
+      setEdge('network-error');
+    }
+  } catch {
+    setEdge('network-error');
+  } finally {
+    setSending(false);
+  }
+}, [visitorName, tab, message, audioUrl, onSuccess, setEdge]);
+
 
   const micConfig = {
     idle: { label: "Tap to record", icon: "🎙", ring: false, color: "rgba(255,255,255,0.08)" },
@@ -759,6 +770,32 @@ function Composer({ onSuccess, setEdge }: ComposerProps) {
 
         {/* Card */}
         <div className="glass rounded-3xl p-6 md:p-8 animate-fade-in-up delay-200">
+          {/* Name input – mandatory */}
+<div className="mb-4">
+  <input
+    type="text"
+    value={visitorName}
+    onChange={(e) => {
+      setVisitorName(e.target.value.slice(0, 50));
+      if (nameError) setNameError("");
+    }}
+    placeholder="Your name *"
+    className="w-full rounded-xl px-4 py-3 text-sm outline-none transition-all"
+    style={{
+      background: "rgba(255,255,255,0.04)",
+      border: nameError
+        ? "1px solid rgba(255,100,100,0.5)"
+        : "1px solid rgba(255,255,255,0.08)",
+      color: "rgba(255,255,255,0.9)",
+    }}
+  />
+  {nameError && (
+    <p className="text-xs mt-1" style={{ color: "rgba(255,120,120,0.8)" }}>
+      Please enter your name so Samatha knows who sent the wish.
+    </p>
+  )}
+</div>
+
           {/* Tabs */}
           <div
             className="flex rounded-xl p-1 mb-6"
@@ -767,7 +804,10 @@ function Composer({ onSuccess, setEdge }: ComposerProps) {
             {(["write", "voice"] as Tab[]).map((t) => (
               <button
                 key={t}
-                onClick={() => setTab(t)}
+                onClick={() => {
+  setTab(t);
+  setNameError("");
+}}
                 className="flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300"
                 style={
                   tab === t
