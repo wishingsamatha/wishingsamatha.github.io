@@ -85,6 +85,89 @@ html {
   100% { background-position: 200% center; }
 }
 
+@keyframes glow-bloom {
+  from { opacity: 0; transform: scale(0.8); }
+  to { opacity: 1; transform: scale(1.1); }
+}
+
+.cake-section {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #0a0a0b;
+}
+.cake-prompt {
+  z-index: 1;
+  margin: 0 0 16px;
+  color: #f5f0ea;
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: clamp(1.5rem, 5vw, 2rem);
+  font-style: italic;
+  text-align: center;
+  transition: opacity 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.cake-canvas-wrap {
+  position: relative;
+  width: 100%;
+  height: min(60vh, 520px);
+  flex: 0 0 auto;
+  cursor: pointer;
+}
+.cake-canvas-wrap canvas { display: block; }
+.cake-loading, .cake-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.cake-loading {
+  background: radial-gradient(ellipse at center, rgba(244, 166, 184, 0.06) 0%, transparent 70%);
+}
+.cake-glow {
+  background: radial-gradient(ellipse at center 60%, rgba(244, 200, 150, 0.35) 0%, transparent 65%);
+  animation: glow-bloom 2s ease-out forwards;
+}
+.cake-controls {
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+}
+.label-style {
+  margin: 0;
+  color: #8a8386;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.cake-blow-button {
+  padding: 8px;
+  border: 0;
+  background: none;
+  color: #8a8386;
+  cursor: pointer;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  transition: opacity 0.3s;
+}
+.cake-blow-button:hover { opacity: 0.7; }
+.cake-confetti {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.cake-confetti > div {
+  position: absolute;
+  top: 0;
+}
+
 @keyframes rainbow {
   0% { background-position: 0 0; }
   50% { background-position: 400% 0; }

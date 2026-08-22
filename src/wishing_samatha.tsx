@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Balloons } from "@/components/ui/balloons";
 import { Button } from "@/components/ui/button";
+import CakeSection from "./CakeSection";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -972,6 +973,7 @@ function ViewWishes({ onBack }: { onBack: () => void }) {
   const [fullAccess, setFullAccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showWishWall, setShowWishWall] = useState(false);
 
   const API_BASE = import.meta.env.VITE_API_BASE || "";
 
@@ -1005,9 +1007,26 @@ function ViewWishes({ onBack }: { onBack: () => void }) {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col items-center px-5 py-10 relative z-10">
+    <>
+      {!showWishWall && (
+        <CakeSection
+          onAllExtinguished={() => undefined}
+          triggerWishWall={() => setShowWishWall(true)}
+        />
+      )}
+      {showWishWall && <div className="min-h-screen flex flex-col items-center px-5 py-10 relative z-10">
       <div className="w-full max-w-2xl">
-        <button onClick={onBack} className="text-xs text-white/40 mb-6">← Back</button>
+        <button
+          onClick={onBack}
+          className="self-start mb-6 px-4 py-2 rounded-xl text-sm transition-all"
+          style={{
+            background: "rgba(255,255,255,0.06)",
+            border: "1px solid rgba(255,255,255,0.12)",
+            color: "rgba(255,255,255,0.7)",
+          }}
+        >
+          ← Back to homepage
+        </button>
         <h2 className="text-3xl font-light mb-6 gradient-text">Wishes for Samatha</h2>
 
         {loading && wishes.length === 0 && <p className="text-sm text-white/50">Loading wishes…</p>}
@@ -1076,7 +1095,8 @@ function ViewWishes({ onBack }: { onBack: () => void }) {
           </>
         )}
       </div>
-    </div>
+      </div>}
+    </>
   );
 }
 
@@ -1259,7 +1279,7 @@ function HeroSection({ onCTA }: { onCTA: () => void }) {
             color: "rgba(255,255,255,0.55)",
           }}
         >
-          A private birthday page
+          Birthday Wishes
         </div>
 
         {/* Headline */}
@@ -1331,14 +1351,19 @@ export default function WishingSamatha() {
   const [edge, setEdge] = useState<EdgeState>(null);
 
   useEffect(() => {
-    const checkHash = () => {
-      if (window.location.hash === "#/view") {
+    const handleHashChange = () => {
+      const hash = window.location.hash;
+      if (hash === "#/view") {
         setScreen("view");
+      } else {
+        // Any other hash (including empty or "#/") shows the main page
+        setScreen("hero");
       }
     };
-    window.addEventListener("hashchange", checkHash);
-    checkHash();
-    return () => window.removeEventListener("hashchange", checkHash);
+
+    window.addEventListener("hashchange", handleHashChange);
+    handleHashChange();
+    return () => window.removeEventListener("hashchange", handleHashChange);
   }, []);
 
   const scrollToComposer = () => {
