@@ -3,9 +3,8 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { Bloom, EffectComposer } from "@react-three/postprocessing";
 import * as THREE from "three";
 
-const CANDLE_COUNT = 4;
-const CANDLE_HEIGHTS = [0.38, 0.34, 0.41, 0.36];
-const CANDLE_RING_RADIUS = 0.52;
+const CANDLE_COUNT = 1;
+const CANDLE_HEIGHTS = [0.38];
 const BOTTOM_TIER_H = 0.85;
 const TOP_TIER_H = 0.7;
 const TOP_CENTER_Y = BOTTOM_TIER_H + TOP_TIER_H / 2;
@@ -130,7 +129,7 @@ function CakeModel({ extinguished, onExtinguish, hinting }: { extinguished: bool
     <directionalLight position={[-2, 4, -3]} intensity={0.12} color="#A0C0FF" />
     <CakeTier radius={1.5} height={BOTTOM_TIER_H} centerY={BOTTOM_TIER_H / 2} count={14} sprinkles={22} gold />
     <CakeTier radius={1} height={TOP_TIER_H} centerY={TOP_CENTER_Y} count={10} sprinkles={14} />
-    {Array.from({ length: CANDLE_COUNT }, (_, index) => { const angle = (index / CANDLE_COUNT) * Math.PI * 2; return <Candle key={index} x={Math.cos(angle) * CANDLE_RING_RADIUS} z={Math.sin(angle) * CANDLE_RING_RADIUS} height={CANDLE_HEIGHTS[index]} index={index} extinguished={extinguished[index]} onExtinguish={() => onExtinguish(index)} hinting={hinting} />; })}
+    <Candle x={0} z={0} height={CANDLE_HEIGHTS[0]} index={0} extinguished={extinguished[0]} onExtinguish={() => onExtinguish(0)} hinting={hinting} />
   </group>;
 }
 
@@ -198,13 +197,9 @@ export default function CakeSection({ onAllExtinguished, triggerWishWall }: { on
     allOutRef.current = true;
     setAllOut(true);
     onAllExtinguished();
-    const revealTimeout = window.setTimeout(() => {
-      setPromptText("and they all wished for you.");
-      if (!reducedMotion) setConfetti(true);
-      const wallTimeout = window.setTimeout(() => { setConfetti(false); triggerWishWall(); }, 1500);
-      return () => window.clearTimeout(wallTimeout);
-    }, 600);
-    return () => window.clearTimeout(revealTimeout);
+    setPromptText("and they all wished for you.");
+    if (!reducedMotion) setConfetti(true);
+    triggerWishWall();
   }, [extinguished, onAllExtinguished, triggerWishWall, reducedMotion]);
 
   const handleExtinguish = useCallback((index: number) => {
@@ -263,7 +258,13 @@ export default function CakeSection({ onAllExtinguished, triggerWishWall }: { on
       </Canvas>}
       {allOut && <div className="cake-glow" />}
     </div>
-    {!allOut && <div className="cake-controls"><p className="label-style">tap the candles</p>{showBlow && <button type="button" onClick={handleBlowClick} className="cake-blow-button">or blow them out</button>}</div>}
+    {!allOut && <div className="cake-controls">
+      <button type="button" className="label-style" onClick={() => canvasWrapRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })}>tap the candle</button>
+      {showBlow && <>
+        <span className="cake-or">or</span>
+        <button type="button" onClick={handleBlowClick} className="cake-blow-button">blow them out</button>
+      </>}
+    </div>}
     <Confetti active={confetti && !reducedMotion} />
   </section>;
 }
