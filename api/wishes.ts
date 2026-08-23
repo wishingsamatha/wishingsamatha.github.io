@@ -9,8 +9,22 @@ const supabase = createClient(
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-    // CORS headers
-    res.setHeader('Access-Control-Allow-Origin', process.env.ALLOWED_ORIGIN || '*');
+    // CORS headers – support multiple origins but return only one
+    const allowedOrigins = (process.env.ALLOWED_ORIGIN || '*')
+        .split(',')
+        .map((o: string) => o.trim())
+        .filter(Boolean);
+
+    const requestOrigin = req.headers.origin;
+
+    if (requestOrigin && allowedOrigins.includes(requestOrigin)) {
+        res.setHeader('Access-Control-Allow-Origin', requestOrigin);
+    } else if (allowedOrigins.length === 1 && allowedOrigins[0] === '*') {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+    } else {
+        res.setHeader('Access-Control-Allow-Origin', allowedOrigins[0] || '*');
+    }
+
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     res.setHeader('Access-Control-Max-Age', '86400');
@@ -26,14 +40,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const { name, location, message, voiceUrl } = req.body;
 
-// Mandatory name check
-  if (!name || !name.trim()) {
-    return res.status(400).json({ error: 'Name is required' });
-  }
+    // Mandatory name check
+    if (!name || !name.trim()) {
+        return res.status(400).json({ error: 'Name is required' });
+    }
 
-  if (!message && !voiceUrl) {
-    return res.status(400).json({ error: 'Either message or voiceUrl is required' });
-  }
+    if (!message && !voiceUrl) {
+        return res.status(400).json({ error: 'Either message or voiceUrl is required' });
+    }
 
     try {
         // 1. Store in Supabase
