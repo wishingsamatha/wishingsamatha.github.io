@@ -144,6 +144,83 @@ const CONFETTI_PIECES = Array.from({ length: 18 }, (_, i) => ({
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
+function BirthdayCalendar() {
+  const year = new Date().getFullYear();
+  const month = 7;
+  const birthdayDay = 25;
+
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstDayIndex = new Date(year, month, 1).getDay();
+  const blanks = Array.from({ length: firstDayIndex }, (_, i) => `blank-${i}`);
+  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+
+  return (
+    <div
+      className="inline-block rounded-lg p-1.5"
+      style={{
+        background: "rgba(255,255,255,0.04)",
+        border: "1px solid rgba(232,131,106,0.2)",
+        backdropFilter: "blur(6px)",
+        width: 92,
+        fontFamily: "var(--font-outfit)",
+      }}
+    >
+      <p
+        className="mb-1 text-center"
+        style={{ fontSize: 7, letterSpacing: "0.12em", textTransform: "uppercase", color: "#b09290", lineHeight: 1 }}
+      >
+        Aug {year}
+      </p>
+
+      <div className="mb-0.5 grid grid-cols-7 gap-0.5">
+        {["S", "M", "T", "W", "T", "F", "S"].map((day, index) => (
+          <div
+            key={index}
+            className="text-center"
+            style={{ fontSize: 6, color: "#6e6268", lineHeight: 1, paddingTop: 1 }}
+          >
+            {day}
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-7 gap-0.5">
+        {blanks.map((blank) => (
+          <div key={blank} style={{ height: 12 }} />
+        ))}
+
+        {days.map((day) => {
+          const isBirthday = day === birthdayDay;
+          return (
+            <div
+              key={day}
+              className="relative flex items-center justify-center rounded-sm"
+              style={{
+                height: 12,
+                fontSize: 7,
+                background: isBirthday
+                  ? "linear-gradient(135deg, rgba(232,131,106,0.4), rgba(196,96,74,0.3))"
+                  : "transparent",
+                border: isBirthday ? "1px solid rgba(232,131,106,0.5)" : "none",
+                color: isBirthday ? "#f5f0eb" : "#6e6268",
+                fontWeight: isBirthday ? 600 : 400,
+                lineHeight: 1,
+              }}
+            >
+              {day}
+              {isBirthday && (
+                <span className="absolute -right-1 -top-1.5" style={{ fontSize: 8, lineHeight: 1 }} title="Samatha's Birthday">
+                  🎂
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function TypingDots() {
   return (
     <span className="inline-flex gap-1 items-center h-4">
@@ -1225,7 +1302,15 @@ function HeroSection({ onCTA }: { onCTA: () => void }) {
       </div>
       <div className="text-center mb-3 relative z-10">
         <h1 className="leading-[1.08] font-light" style={{ fontFamily: "var(--font-fraunces)", fontSize: "clamp(2.2rem, 7.5vw, 3.8rem)", color: "#f5f0eb" }}>Happy Birthday,</h1>
-        <h1 className="leading-[1.05] italic" style={{ fontFamily: "var(--font-fraunces)", fontSize: "clamp(2.5rem, 8.5vw, 4.2rem)", color: "#e8836a" }}>Samatha</h1>
+        <div className="flex flex-col items-center justify-center gap-2 md:flex-row md:gap-4">
+          <h1 className="leading-[1.05] italic" style={{ fontFamily: "var(--font-fraunces)", fontSize: "clamp(2.5rem, 8.5vw, 4.2rem)", color: "#e8836a" }}>Samatha</h1>
+          <div className="hidden items-center md:flex" style={{ height: "1em" }}>
+            <BirthdayCalendar />
+          </div>
+          <div className="md:hidden">
+            <BirthdayCalendar />
+          </div>
+        </div>
       </div>
       <p className="text-center max-w-[270px] leading-relaxed mb-10 relative z-10" style={{ fontFamily: "var(--font-outfit)", fontSize: "clamp(0.78rem, 2.8vw, 0.9rem)", color: "#6e6268" }}>A small gift from your loved ones</p>
       <div className="flex flex-row items-center gap-3 w-full max-w-[360px] relative z-10">
