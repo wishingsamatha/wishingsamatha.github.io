@@ -1,6 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, type CSSProperties } from "react";
 import { Balloons } from "@/components/ui/balloons";
-import { Button } from "@/components/ui/button";
 import CakeSection from "./CakeSection";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -16,41 +15,6 @@ type EdgeState =
   | "inappropriate"
   | "rate-limit"
   | "email-failed";
-
-// ── Slideshow photos (Unsplash) ───────────────────────────────────────────────
-
-const SLIDES = [
-  // {
-  //   id: "photo-1",
-  //   kb: "animate-kb-1",
-  //   alt: "Photo 1",
-  //   src: "/images/Photo 1.jpg",
-  // },
-  // {
-  //   id: "photo-2",
-  //   kb: "animate-kb-2",
-  //   alt: "Photo 2",
-  //   src: "/images/Photo 2.jpg",
-  // },
-  {
-    id: "photo-3",
-    kb: "animate-kb-3",
-    alt: "Photo 3",
-    src: "/images/Photo 3.jpg",
-  },
-  {
-    id: "photo-4",
-    kb: "animate-kb-4",
-    alt: "Photo 4",
-    src: "/images/Photo 4.jpg",
-  },
-  {
-    id: "photo-5",
-    kb: "animate-kb-5",
-    alt: "Photo 5",
-    src: "/images/Photo 5.jpg",
-  },
-];
 
 // ── AI conversation flow ──────────────────────────────────────────────────────
 
@@ -179,61 +143,6 @@ const CONFETTI_PIECES = Array.from({ length: 18 }, (_, i) => ({
 }));
 
 // ── Sub-components ────────────────────────────────────────────────────────────
-
-function Slideshow() {
-  const [current, setCurrent] = useState(0);
-  const [prev, setPrev] = useState<number | null>(null);
-
-  useEffect(() => {
-    const t = setInterval(() => {
-      setPrev(current);
-      setCurrent((c) => (c + 1) % SLIDES.length);
-    }, 5000);
-    return () => clearInterval(t);
-  }, [current]);
-
-  return (
-    <div className="absolute inset-0 overflow-hidden">
-      {SLIDES.map((slide, i) => {
-        const isActive = i === current;
-        const isPrev = i === prev;
-        return (
-          <div
-            key={slide.id}
-            className="absolute inset-0 transition-opacity duration-[1800ms] ease-in-out"
-            style={{ opacity: isActive ? 1 : isPrev ? 0 : 0, zIndex: isActive ? 2 : isPrev ? 1 : 0 }}
-          >
-            <img
-              src={`https://images.unsplash.com/photo-${slide.id}?w=1600&h=900&fit=crop&auto=format`}
-              alt={slide.alt}
-              className={`w-full h-full object-cover ${slide.kb}`}
-            />
-          </div>
-        );
-      })}
-      {/* layered overlay */}
-      <div className="absolute inset-0 z-10" style={{ background: "linear-gradient(to bottom, rgba(10,10,10,0.55) 0%, rgba(10,10,10,0.35) 40%, rgba(10,10,10,0.75) 80%, rgba(10,10,10,0.95) 100%)" }} />
-    </div>
-  );
-}
-
-function SlideIndicator({ current }: { current: number }) {
-  return (
-    <div className="flex gap-1.5 justify-center">
-      {SLIDES.map((_, i) => (
-        <div
-          key={i}
-          className="rounded-full transition-all duration-500"
-          style={{
-            width: i === current ? 20 : 4,
-            height: 4,
-            background: i === current ? "linear-gradient(90deg,#E8A598,#C9748F)" : "rgba(255,255,255,0.3)",
-          }}
-        />
-      ))}
-    </div>
-  );
-}
 
 function TypingDots() {
   return (
@@ -1256,129 +1165,76 @@ function EdgeDemoStrip({ onShow }: { onShow: (e: EdgeState) => void }) {
 
 // ── Hero Section ──────────────────────────────────────────────────────────────
 
+const HERO_PHOTOS = [
+  { url: "/images/Photo 1.jpg", alt: "Samatha celebrating her birthday" },
+  { url: "/images/Photo 2.jpg", alt: "Samatha smiling in a birthday portrait" },
+  { url: "/images/Photo 3.jpg", alt: "Samatha in a festive portrait" },
+  { url: "/images/Photo 4.jpg", alt: "Samatha posing for a birthday photo" },
+  { url: "/images/Photo 5.jpg", alt: "Samatha in a joyful birthday portrait" },
+];
+
 function HeroSection({ onCTA }: { onCTA: () => void }) {
-  const [slideCurrent, setSlideCurrent] = useState(0);
+  const [activeIndex, setActiveIndex] = useState(0);
   const balloonsRef = useRef<{ launchAnimation: () => void } | null>(null);
 
-  // Auto-rotate with crossfade every 5 seconds
   useEffect(() => {
     const interval = setInterval(() => {
-      setSlideCurrent((c) => (c + 1) % SLIDES.length);
-    }, 5000);
+      setActiveIndex((prev) => (prev + 1) % HERO_PHOTOS.length);
+    }, 3000);
     return () => clearInterval(interval);
   }, []);
 
-  const nextSlide = () => setSlideCurrent((c) => (c + 1) % SLIDES.length);
-  const prevSlide = () => setSlideCurrent((c) => (c - 1 + SLIDES.length) % SLIDES.length);
+  const N = HERO_PHOTOS.length;
+  const entryTransforms = [
+    "translate(170%, -145%) rotate(18deg) scale(0.5)",
+    "translate(-170%, -135%) rotate(-17deg) scale(0.5)",
+    "translate(155%, -165%) rotate(15deg) scale(0.5)",
+    "translate(160%, 150%) rotate(-16deg) scale(0.5)",
+    "translate(-155%, -155%) rotate(19deg) scale(0.5)",
+  ];
+
+  function getCardStyle(slot: number, cardIndex: number): CSSProperties {
+    const base: CSSProperties = {
+      position: "absolute",
+      inset: 0,
+      width: "100%",
+      height: "100%",
+      borderRadius: "18px",
+      overflow: "hidden",
+      transformOrigin: "center center",
+      willChange: "transform, opacity",
+      backfaceVisibility: "hidden",
+    };
+
+    if (slot === 0) return { ...base, transform: "translate(0, 0) rotate(-1deg) scale(1)", opacity: 1, zIndex: 50, transition: "transform 750ms cubic-bezier(0.34, 1.18, 0.64, 1), opacity 500ms ease", boxShadow: "0 36px 80px rgba(0,0,0,0.8), 0 8px 24px rgba(232,131,106,0.2)" };
+    if (slot === 1) return { ...base, transform: "translate(-6%, 30px) rotate(-3deg) scale(0.87)", opacity: 0.6, zIndex: 40, transition: "transform 580ms ease-out, opacity 460ms ease", boxShadow: "0 16px 44px rgba(0,0,0,0.55)" };
+    if (slot === 2) return { ...base, transform: "translate(-11%, 56px) rotate(-5.5deg) scale(0.75)", opacity: 0.32, zIndex: 30, transition: "transform 480ms ease-out, opacity 400ms ease", boxShadow: "0 8px 24px rgba(0,0,0,0.4)" };
+    if (slot === 3) return { ...base, transform: "translate(-16%, 82px) rotate(-8deg) scale(0.62)", opacity: 0.1, zIndex: 20, transition: "transform 420ms ease-out, opacity 360ms ease" };
+    return { ...base, transform: entryTransforms[cardIndex], opacity: 0, zIndex: 10, transition: "none" };
+  }
 
   return (
-    <section className="relative min-h-screen flex flex-col items-center justify-center text-center px-5 overflow-hidden">
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-4xl h-[60vh] max-h-[500px] z-0 overflow-hidden rounded-[2.5rem]" style={{ boxShadow: "0 0 80px rgba(232,165,152,0.1)" }}>
-        {SLIDES.map((slide, i) => (
-          <div
-            key={slide.id}
-            className="absolute inset-0 transition-opacity duration-[1800ms] ease-in-out"
-            style={{
-              opacity: i === slideCurrent ? 1 : 0,
-              zIndex: i === slideCurrent ? 2 : 1,
-            }}
-          >
-            <img src={slide.src} alt={slide.alt} className={`w-full h-full object-cover ${slide.kb}`} />
-          </div>
-        ))}
-        <div
-          className="absolute inset-0 z-10 pointer-events-none"
-          style={{ background: "linear-gradient(to bottom, rgba(10,10,10,0.4) 0%, rgba(10,10,10,0.7) 100%)" }}
-        />
-
-        {/* Navigation Buttons */}
-        <button
-          onClick={prevSlide}
-          className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 z-30 w-10 h-10 flex items-center justify-center rounded-full text-white transition-all hover:scale-110 hover:bg-white/20"
-          style={{ background: "rgba(255,255,255,0.08)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.15)" }}
-        >
-          ←
-        </button>
-        <button
-          onClick={nextSlide}
-          className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 z-30 w-10 h-10 flex items-center justify-center rounded-full text-white transition-all hover:scale-110 hover:bg-white/20"
-          style={{ background: "rgba(255,255,255,0.08)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.15)" }}
-        >
-          →
-        </button>
+    <section className="relative min-h-screen flex flex-col items-center justify-center px-6 py-14 overflow-hidden" style={{ background: "radial-gradient(ellipse at 50% 10%, #1c1220 0%, #0c0a10 65%)" }}>
+      <div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[320px] rounded-full blur-[100px]" style={{ background: "radial-gradient(ellipse, rgba(232,131,106,0.1) 0%, transparent 70%)" }} />
+      <p className="text-[10px] tracking-[0.42em] uppercase mb-7" style={{ fontFamily: "var(--font-outfit)", color: "#b09290" }}>Birthday Wishes</p>
+      <div className="relative w-[130px] h-[170px] md:w-[260px] md:h-[340px]" style={{ marginBottom: "2.2rem" }}>
+        {HERO_PHOTOS.map((photo, i) => {
+          const slot = (activeIndex - i + N) % N;
+          return <div key={i} style={getCardStyle(slot, i)}><img src={photo.url} alt={photo.alt} className="w-full h-full object-cover" draggable={false} />{slot === 0 && <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(12,10,16,0.3) 0%, transparent 55%)" }} />}</div>;
+        })}
       </div>
+      <div className="text-center mb-3 relative z-10">
+        <h1 className="leading-[1.08] font-light" style={{ fontFamily: "var(--font-fraunces)", fontSize: "clamp(2.2rem, 7.5vw, 3.8rem)", color: "#f5f0eb" }}>Happy Birthday,</h1>
+        <h1 className="leading-[1.05] italic" style={{ fontFamily: "var(--font-fraunces)", fontSize: "clamp(2.5rem, 8.5vw, 4.2rem)", color: "#e8836a" }}>Samatha</h1>
+      </div>
+      <p className="text-center max-w-[270px] leading-relaxed mb-10 relative z-10" style={{ fontFamily: "var(--font-outfit)", fontSize: "clamp(0.78rem, 2.8vw, 0.9rem)", color: "#6e6268" }}>A small gift from your loved ones</p>
+      <div className="flex flex-row items-center gap-3 w-full max-w-[360px] relative z-10">
+        <button onClick={() => balloonsRef.current?.launchAnimation()} className="flex-1 basis-0 min-w-0 h-12 px-2 rounded-full flex items-center justify-center whitespace-nowrap text-sm tracking-wide transition-all duration-200 hover:scale-[1.02] active:scale-[0.97]" style={{ fontFamily: "var(--font-outfit)", border: "1px solid rgba(232,131,106,0.45)", color: "#f0ebe6", background: "rgba(232,131,106,0.07)" }}>Launch Balloons! 🎈</button>
+        <button onClick={onCTA} className="flex-1 basis-0 min-w-0 h-12 px-2 rounded-full flex items-center justify-center whitespace-nowrap text-sm tracking-wide text-white transition-all duration-200 hover:scale-[1.02] active:scale-[0.97]" style={{ fontFamily: "var(--font-outfit)", background: "linear-gradient(135deg, #e8836a 0%, #c4604a 100%)", boxShadow: "0 8px 28px rgba(232,131,106,0.32)" }}>Make a Wish ✨</button>
+      </div>
+      <p className="mt-10 text-[10px] tracking-[0.25em] relative z-10" style={{ fontFamily: "var(--font-outfit)", color: "#322c30" }}>↓ scroll</p>
+      <div className="flex items-center gap-2 mt-4 relative z-10">{HERO_PHOTOS.map((_, i) => <button key={i} onClick={() => setActiveIndex(i)} className="rounded-full transition-all duration-300" style={{ width: i === activeIndex ? "22px" : "6px", height: "6px", background: i === activeIndex ? "#e8836a" : "#322c30" }} aria-label={`Go to photo ${i + 1}`} />)}</div>
       <Balloons ref={balloonsRef} type="default" />
-
-      <div className="relative z-20 flex flex-col items-center gap-6">
-        {/* Eyebrow */}
-        <div
-          className="animate-fade-in-up text-xs uppercase tracking-[0.25em] px-4 py-1.5 rounded-full"
-          style={{
-            background: "rgba(255,255,255,0.06)",
-            border: "1px solid rgba(255,255,255,0.1)",
-            color: "rgba(255,255,255,0.55)",
-          }}
-        >
-          Birthday Wishes
-        </div>
-
-        {/* Headline */}
-        <h1
-          className="animate-fade-in-up delay-200 text-5xl md:text-7xl font-light leading-none"
-          style={{ fontFamily: "var(--font-display)", letterSpacing: "-0.03em", maxWidth: 700 }}
-        >
-          Happy Birthday,{" "}
-          <em className="shimmer-text not-italic block md:inline">Samatha</em>
-        </h1>
-
-        {/* Subheadline */}
-        <p
-          className="animate-fade-in-up delay-300 text-base md:text-lg font-light max-w-xs"
-          style={{ color: "rgba(255,255,255,0.5)", lineHeight: 1.6 }}
-        >
-          A small gift, from the people who will always remember you.
-        </p>
-
-        {/* CTA */}
-        <div className="animate-fade-in-up delay-500 flex flex-col items-center gap-3">
-          <Button
-            onClick={() => balloonsRef.current?.launchAnimation()}
-            className="relative overflow-hidden rounded-2xl px-8 py-4 text-sm tracking-wide font-medium rainbow-border"
-            style={{
-              background: "linear-gradient(135deg, #E8A598, #C9748F 60%, #D4A574)",
-              color: "#0a0a0a",
-              boxShadow: "0 0 30px rgba(232,165,152,0.4), 0 0 60px rgba(201,116,143,0.3), inset 0 1px 0 rgba(255,255,255,0.3)",
-            }}
-          >
-            <span className="relative z-10">Launch Balloons! 🎈</span>
-            <span
-              className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite]"
-              style={{
-                background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)",
-              }}
-            />
-          </Button>
-          <Button
-            onClick={onCTA}
-            className="btn-primary rainbow-border px-8 py-4 rounded-2xl text-sm tracking-wide"
-          >
-            Leave a wish
-          </Button>
-          <a
-            href="#composer"
-            className="text-xs"
-            style={{ color: "rgba(255,255,255,0.25)" }}
-          >
-            ↓ scroll
-          </a>
-        </div>
-
-        {/* Slide indicator */}
-        <div className="animate-fade-in-up delay-700">
-          <SlideIndicator current={slideCurrent} />
-        </div>
-      </div>
-
     </section>
   );
 }
