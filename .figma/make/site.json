@@ -1,4 +1,5 @@
 {
+  "title": "Wishing Samatha",
   "description": "Create and send personalized, elegant birthday wishes via text or voice with AI assistance in a private, premium Apple-style interface.",
   "robots": {
     "index": false
@@ -6,5 +7,8 @@
   "accessibility": {
     "addBypassLinks": false,
     "ignoreReducedMotion": false
+  },
+  "openGraph": {
+    "image": "/images/Photo 1.jpg"
   }
 }
