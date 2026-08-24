@@ -1,6 +1,6 @@
-import OpenAI from 'openai';
+import Groq from 'groq-sdk';
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 export default async function handler(req: any, res: any) {
     // CORS headers – support multiple origins but return only one
@@ -16,7 +16,6 @@ export default async function handler(req: any, res: any) {
     } else if (allowedOrigins.length === 1 && allowedOrigins[0] === '*') {
         res.setHeader('Access-Control-Allow-Origin', '*');
     } else {
-        // fallback to first allowed origin (or '*')
         res.setHeader('Access-Control-Allow-Origin', allowedOrigins[0] || '*');
     }
 
@@ -24,14 +23,14 @@ export default async function handler(req: any, res: any) {
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     res.setHeader('Access-Control-Max-Age', '86400');
 
-    // Handle preflight
     if (req.method === 'OPTIONS') {
         res.status(200).end();
         return;
     }
 
     if (req.method !== 'POST') {
-        return res.status(405).json({ error: 'Method not allowed' });
+        res.status(405).json({ error: 'Method not allowed' });
+        return;
     }
 
     const { name, relation, memory, tone } = req.body;
@@ -45,15 +44,19 @@ Desired tone: ${tone || 'warm'}
 Write a sincere, concise message under 120 words. Keep it personal and specific.`;
 
     try {
-        const completion = await openai.chat.completions.create({
-            model: 'gpt-4o-mini',
+        const completion = await groq.chat.completions.create({
+            model: 'openai/gpt-oss-20b',
             messages: [{ role: 'user', content: prompt }],
+            temperature: 0.8,
         });
 
         const generatedMessage = completion.choices[0]?.message?.content || 'Happy birthday, Samatha!';
         res.status(200).json({ generatedMessage });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'AI generation failed' });
+        console.error('Groq error:', error);
+        res.status(500).json({
+            error: 'AI generation failed',
+            details: error instanceof Error ? error.message : String(error),
+        });
     }
 }
