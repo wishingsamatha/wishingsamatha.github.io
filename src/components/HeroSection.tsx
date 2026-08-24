@@ -30,9 +30,9 @@ export function HeroSection({ onCTA }: { onCTA: () => void }) {
       <p className="text-center max-w-[270px] leading-relaxed mb-10 relative z-10" style={{ fontFamily: "var(--font-outfit)", fontSize: "clamp(0.78rem, 2.8vw, 0.9rem)", color: "#6e6268" }}>A small gift from your loved ones</p>
       <div className="flex flex-row items-center gap-3 w-full max-w-[360px] relative z-10">
         <button onClick={() => balloonsRef.current?.launchAnimation()} className="flex-1 basis-0 min-w-0 h-12 px-2 rounded-full flex items-center justify-center whitespace-nowrap text-sm tracking-wide transition-all duration-200 hover:scale-[1.02] active:scale-[0.97]" style={{ fontFamily: "var(--font-outfit)", border: "1px solid rgba(232,131,106,0.45)", color: "#f0ebe6", background: "rgba(232,131,106,0.07)" }}>Launch Balloons! 🎈</button>
-        <button onClick={onCTA} className="flex-1 basis-0 min-w-0 h-12 px-2 rounded-full flex items-center justify-center whitespace-nowrap text-sm tracking-wide text-white transition-all duration-200 hover:scale-[1.02] active:scale-[0.97]" style={{ fontFamily: "var(--font-outfit)", background: "linear-gradient(135deg, #e8836a 0%, #c4604a 100%)", boxShadow: "0 8px 28px rgba(232,131,106,0.32)" }}>Make a Wish ✨</button>
+        <button onClick={onCTA} className="flex-1 basis-0 min-w-0 h-12 px-2 rounded-full flex items-center justify-center whitespace-nowrap text-sm tracking-wide text-white transition-all duration-200 hover:scale-[1.02] active:scale-[0.97]" style={{ fontFamily: "var(--font-outfit)", background: "linear-gradient(135deg, #e8836a 0%, #c4604a 100%)", boxShadow: "0 8px 28px rgba(232,131,106,0.32)" }}>Wish Her ✨</button>
       </div>
-      <p className="mt-10 text-[10px] tracking-[0.25em] relative z-10" style={{ fontFamily: "var(--font-outfit)", color: "#322c30" }}>↓ scroll</p>
+      <p className="mt-10 text-[10px] tracking-[0.25em] relative z-10" style={{ fontFamily: "var(--font-outfit)", color: "#b09290" }}>↓ scroll</p>
       <Balloons ref={balloonsRef} type="default" />
     </section>
   );
